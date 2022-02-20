@@ -1,0 +1,181 @@
+TEST PLAN
+
+The Field class' only purpose is to keep information about its status. It can be EMPTY, which is the default value, or PLAYER1/PLAYER2. Whenever status is changed, the FieldStatusChanged event is fired. 
+
+C#
+
+public class Field
+{
+    private FIELD_STATUS _fieldStatus;
+    public event EventHandler FieldStatusChanged;
+
+    // some code omitted
+    public FIELD_STATUS FieldStatus
+    {
+        get
+        {
+            return _fieldStatus;
+        }
+        set
+        {
+            if (value != _fieldStatus)
+            {
+                _fieldStatus = value;
+                OnFieldStatusChanged();
+            }
+        }
+The Board class listens to FieldStatusChanged events from its Fields collection and checks for end game conditions. Event handlers are created after fields for each field in the Board class.
+
+C#
+
+private void AddFieldEventListeners()
+{
+    for (int i = 0; i < _fields.GetLength(0); i++)
+    {
+         for (int j = 0; j < _fields.GetLength(1); j++)
+         {
+             _fields[i, j].FieldStatusChanged += Board_FieldStatusChanged;
+         }
+    }
+} 
+From game rules we can define five end game conditions:
+
+Win condition when all fields in the same row belong to one player. In code terms, all field status in PLAYER1 or PLAYER2 are in the same row.
+    
+
+Win condition when all fields in the same column belong to one player
+      
+
+Win condition when all fields in the main diagonal belong to one player   
+
+
+Win condition when all fields are in anti-diagonal belonging to one player
+
+
+Tie condition when all fields have a value other than EMPTY, but no win conditions apply.
+Whenever status in any field changes, the CheckWinCondition method is invoked in the Board class. If any win condition or tie is applicable, board fires the GameEnd event. As a parameter, event sends the GameStatus class which is a simple two enum collection with information about the winning player and the win condition. The caller should handle it appropriately - in this example, the Windows Form disables all controls used to display fields, displays the game result, and highlights the winning row, column, or diagonal.
+
+And finally testing. Since classes Field and GameStatus are simple, only the Board class is covered with tests. There are nine tests in the BoardTests class. First three check if the Board class throws exceptions with a bad constructor parameter.
+
+C#
+Shrink ▲   Copy Code
+[TestMethod]
+[ExpectedException(typeof(ArgumentNullException))]
+public void TestConstructorFieldNull()
+{
+    Board board = new Board(null);
+}
+
+[TestMethod]
+[ExpectedException(typeof(ArgumentException))]
+public void TestConstructorFieldNotSquareMatrix()
+{
+    Field[,] fields = new Field[2, 3];
+
+    fields[0, 0] = new Field();
+    fields[0, 1] = new Field();
+    fields[0, 2] = new Field();
+    fields[1, 0] = new Field();
+    fields[1, 1] = new Field();
+    fields[1, 2] = new Field();
+
+    Board board = new Board(fields);
+}
+
+[TestMethod]
+[ExpectedException(typeof(ArgumentNullException))]
+public void TestConstructorNullFieldsInMatrix()
+{
+    Field[,] fields = new Field[3, 3];
+ 
+     fields[0, 0] = new Field();
+    fields[0, 1] = new Field();
+    fields[0, 2] = new Field();
+    fields[1, 0] = new Field();
+    fields[1, 1] = null;
+    fields[1, 2] = new Field();
+    fields[2, 0] = new Field();
+    fields[2, 1] = new Field();
+    fields[2, 2] = new Field();
+
+    Board board = new Board(fields);
+} 
+The forth test tests if the Fields collection is successfully set as the class Fields property.
+
+C#
+Copy Code
+[TestMethod]
+public void TestConstructorRegularCase()
+{
+    Field[,] fields = new Field[3, 3];
+ 
+    fields[0, 0] = new Field();
+    fields[0, 1] = new Field();
+    fields[0, 2] = new Field();
+    fields[1, 0] = new Field();
+    fields[1, 1] = new Field();
+    fields[1, 2] = new Field();
+    fields[2, 0] = new Field();
+    fields[2, 1] = new Field();
+    fields[2, 2] = new Field();
+
+    Board board = new Board(fields);
+
+    Assert.AreEqual(fields.GetLength(0), board.Fields.GetLength(0));
+    Assert.AreEqual(fields.GetLength(1), board.Fields.GetLength(1));
+} 
+The last five tests simulate and test win conditions. All tests have three parts, first the Board object construction:
+
+C#
+Copy Code
+[TestMethod]
+public void TestAllFieldsInRowWinCondition()
+{
+    Field[,] fields = new Field[3, 3];
+ 
+    fields[0, 0] = new Field() { FieldStatus = FIELD_STATUS.EMPTY };
+    fields[0, 1] = new Field() { FieldStatus = FIELD_STATUS.EMPTY };
+    fields[0, 2] = new Field() { FieldStatus = FIELD_STATUS.EMPTY };
+    fields[1, 0] = new Field() { FieldStatus = FIELD_STATUS.EMPTY };
+    fields[1, 1] = new Field() { FieldStatus = FIELD_STATUS.EMPTY };
+    fields[1, 2] = new Field() { FieldStatus = FIELD_STATUS.EMPTY };
+    fields[2, 0] = new Field() { FieldStatus = FIELD_STATUS.EMPTY };
+    fields[2, 1] = new Field() { FieldStatus = FIELD_STATUS.EMPTY };
+    fields[2, 2] = new Field() { FieldStatus = FIELD_STATUS.EMPTY };
+
+    Board board = new Board(fields);
+Second, the event handler is created for the Board GameEnd event. When the event is fired, it will assert if the board returned the correct win parameters:
+
+C#
+Copy Code
+board.GameEnd += (sender, e) =>
+{
+    Assert.AreEqual(GAME_STATUS.PLAYER_ONE_WON, e.GameProgress);
+        Assert.AreEqual(WIN_CONDITION.ROW, e.WinCondition);
+        Assert.AreEqual(0, e.WinRowOrColumn);
+};
+Third, the game is simulated by changing the board field status:
+
+C#
+Copy Code
+fields[0, 0].FieldStatus = FIELD_STATUS.PLAYER1;
+// [X] [ ] [ ] 
+// [ ] [ ] [ ]
+// [ ] [ ] [ ]
+fields[1, 1].FieldStatus = FIELD_STATUS.PLAYER2;
+// [X] [ ] [ ] 
+// [ ] [0] [ ]
+// [ ] [ ] [ ]
+fields[0, 1].FieldStatus = FIELD_STATUS.PLAYER1;
+// [X] [X] [ ] 
+// [ ] [0] [ ]
+// [ ] [ ] [ ]
+fields[2, 2].FieldStatus = FIELD_STATUS.PLAYER2;
+// [X] [X] [ ] 
+// [ ] [0] [ ]
+// [ ] [ ] [0]
+fields[0, 2].FieldStatus = FIELD_STATUS.PLAYER1;
+// [X] [X] [X] 
+// [ ] [0] [ ]
+// [ ] [ ] [0]
+In this test, all fields in row 0 belong to player 1 (X) and the GameEnd event is fired. Asserts verify player one as winner, row as win condition, and row 0 as winning row. If this game is simulated in the article solution, the Windows Form would handle it in the following wa
