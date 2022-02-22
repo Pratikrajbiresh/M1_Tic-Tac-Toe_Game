@@ -58,9 +58,7 @@ Whenever status in any field changes, the CheckWinCondition method is invoked in
 And finally testing. Since classes Field and GameStatus are simple, only the Board class is covered with tests. There are nine tests in the BoardTests class. First three check if the Board class throws exceptions with a bad constructor parameter.
 
 C#
-Shrink ▲   Copy Code
-[TestMethod]
-[ExpectedException(typeof(ArgumentNullException))]
+
 public void TestConstructorFieldNull()
 {
     Board board = new Board(null);
@@ -103,8 +101,7 @@ public void TestConstructorNullFieldsInMatrix()
 The forth test tests if the Fields collection is successfully set as the class Fields property.
 
 C#
-Copy Code
-[TestMethod]
+
 public void TestConstructorRegularCase()
 {
     Field[,] fields = new Field[3, 3];
@@ -127,8 +124,7 @@ public void TestConstructorRegularCase()
 The last five tests simulate and test win conditions. All tests have three parts, first the Board object construction:
 
 C#
-Copy Code
-[TestMethod]
+
 public void TestAllFieldsInRowWinCondition()
 {
     Field[,] fields = new Field[3, 3];
@@ -147,7 +143,7 @@ public void TestAllFieldsInRowWinCondition()
 Second, the event handler is created for the Board GameEnd event. When the event is fired, it will assert if the board returned the correct win parameters:
 
 C#
-Copy Code
+
 board.GameEnd += (sender, e) =>
 {
     Assert.AreEqual(GAME_STATUS.PLAYER_ONE_WON, e.GameProgress);
